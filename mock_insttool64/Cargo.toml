@@ -1,5 +1,5 @@
 [package]
-name = "mock_insttool64"
+name = "insttool64"
 version = "0.1.0"
 edition = "2021"
 
