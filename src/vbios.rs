@@ -1,10 +1,12 @@
 use std::fs::OpenOptions;
+use std::io::prelude::*;
 use std::io::{self, Write};
 use std::ops::Range;
 use std::path::Path;
 
-use miniz_oxide::deflate::compress_to_vec;
-use miniz_oxide::inflate::decompress_to_vec;
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 
 pub struct VBiosBuilder<P: AsRef<Path> + Clone> {
     root: P,
@@ -26,7 +28,10 @@ impl<P: AsRef<Path> + Clone> VBiosBuilder<P> {
             let bin = std::fs::read(&p).unwrap_or_else(|e| {
                 panic!("couldn't read: {}. {}", p.as_ref().display(), e)
             });
-            let com_buf = compress_to_vec(&bin, 6);
+            let mut encoder =
+                ZlibEncoder::new(Vec::new(), Compression::default());
+            encoder.write_all(&bin).unwrap();
+            let com_buf = encoder.finish().unwrap();
             buf.extend_from_slice(&f);
             buf.extend_from_slice(&com_buf);
         });
@@ -79,7 +84,7 @@ impl VBios {
                             .unwrap(),
                     ) as usize
             })
-            .unwrap_or_else(|| panic!("couldn't find flag: {:#04x?}", flag))
+            .unwrap_or_else(|| panic!("couldn't find flag: {:?}", flag))
     }
     pub fn export_bin<P: AsRef<Path>>(
         &self,
@@ -91,8 +96,9 @@ impl VBios {
             .write(true)
             .truncate(true)
             .open(path)?;
-        let dec_buf = decompress_to_vec(&self.buf[range])
-            .unwrap_or_else(|e| panic!("decompress failed: {}", e));
+        let mut deflater = ZlibDecoder::new(&self.buf[range]);
+        let mut dec_buf = Vec::new();
+        deflater.read_to_end(&mut dec_buf).unwrap();
         Ok(file.write_all(&dec_buf)?)
     }
 }
