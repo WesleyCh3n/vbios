@@ -17,3 +17,4 @@ members = [
 ]
 
 [dependencies]
+miniz_oxide = "0.6.2"

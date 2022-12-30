@@ -3,6 +3,9 @@ use std::io::{self, Write};
 use std::ops::Range;
 use std::path::Path;
 
+use miniz_oxide::deflate::compress_to_vec;
+use miniz_oxide::inflate::decompress_to_vec;
+
 pub struct VBiosBuilder<P: AsRef<Path> + Clone> {
     root: P,
     bins: Vec<(P, Vec<u8>)>,
@@ -23,8 +26,9 @@ impl<P: AsRef<Path> + Clone> VBiosBuilder<P> {
             let bin = std::fs::read(&p).unwrap_or_else(|e| {
                 panic!("couldn't read: {}. {}", p.as_ref().display(), e)
             });
+            let com_buf = compress_to_vec(&bin, 6);
             buf.extend_from_slice(&f);
-            buf.extend_from_slice(&bin);
+            buf.extend_from_slice(&com_buf);
         });
         Ok(VBios::new(buf))
     }
@@ -87,6 +91,8 @@ impl VBios {
             .write(true)
             .truncate(true)
             .open(path)?;
-        Ok(file.write_all(&self.buf[range])?)
+        let dec_buf = decompress_to_vec(&self.buf[range])
+            .unwrap_or_else(|e| panic!("decompress failed: {}", e));
+        Ok(file.write_all(&dec_buf)?)
     }
 }
