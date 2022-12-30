@@ -10,23 +10,27 @@ use crate::vbios::{VBios, VBiosBuilder};
 const FLASH_FLAG: [u8; 5] = [0x5A, 0x5A, 0xA5, 0xA5, 0x01];
 const DRIVER_FLAG: [u8; 5] = [0x5A, 0xA5, 0x5A, 0xA5, 0x01];
 
+fn print_usage() {
+    println!("USAGE:");
+    println!("    vbios.exe <SUBCOMMAND>");
+    println!("SUBCOMMAND:");
+    println!("    generate  -> generate executable");
+    println!("    update    -> update / flash bios");
+}
+
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
-        println!("USAGE:");
-        println!("    vbios.exe <SUBCOMMAND>");
-        println!("SUBCOMMAND:");
-        println!("    generate  -> generate executable");
-        println!("    update    -> update / flash bios");
+        print_usage();
         return Ok(());
     }
     if args[1] == "generate" {
         println!("...generate");
-        let vbios = VBiosBuilder::new("./target/release/vbios.exe")
-            .add_bin("./target/release/input.exe", FLASH_FLAG.into())
-            .add_bin("./target/release/insttool64.exe", DRIVER_FLAG.into())
+        let vbios = VBiosBuilder::new("vbios.exe")
+            .add_bin("input.exe", FLASH_FLAG.into())
+            .add_bin("insttool64.exe", DRIVER_FLAG.into())
             .build()?;
-        vbios.write_all("./target/release/vbiospack.exe")?;
+        vbios.write_all("vbiospack.exe")?;
     } else if args[1] == "update" {
         println!("...update");
         let vbios = VBios::from(&args[0]);
@@ -49,11 +53,8 @@ fn main() -> io::Result<()> {
         println!("......done");
         std::fs::remove_dir_all(tmp_dir)?;
     } else {
-        println!("USAGE:");
-        println!("    vbios.exe <SUBCOMMAND>");
-        println!("SUBCOMMAND:");
-        println!("    generate  -> generate executable");
-        println!("    update    -> update / flash bios");
+        println!("Invalid option: {}", args[1]);
+        print_usage();
         return Ok(());
     }
     println!("...finish");
